@@ -29,7 +29,7 @@ def search_recursively(max_depth, root_dir, dir, dir_depth, path_regex, text):
                     for match in matches:
                         print('    {}'.format(match))
                     if matches:
-                        print('    {} matches'.format(len(matches)))
+                        print(bold('    {} matches'.format(len(matches))))
             except UnicodeDecodeError as ex:
                 # ignore non-text files
                 #print('  ERROR on openning {}'.format(path))
