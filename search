@@ -25,14 +25,20 @@ def search_recursively(max_depth, root_dir, dir, dir_depth, path_regex, text):
                 if matched:
                     matched_files += 1
                     matched_lines += len(matches)
-                    print('  {}'.format(bold('./' + relative_path)))
+                    print('  {}'.format(invert('./' + relative_path)))
                     for match in matches:
                         print('    {}'.format(match))
                     if matches:
                         print('    {} matches'.format(len(matches)))
             except UnicodeDecodeError as ex:
-                print('  ERROR on openning {}'.format(path))
+                # ignore non-text files
+                #print('  ERROR on openning {}'.format(path))
+                #print('  {}'.format(ex))
+                pass
     return matched_files, matched_lines
+
+def invert(str):
+    return '\033[7m{}\033[0m'.format(str)
 
 def underline(str):
     return '\033[4m{}\033[0m'.format(str)
@@ -53,7 +59,9 @@ def check_content(path, text):
     else:
         return True, []
     with open(path, 'r') as file:
-        matches = ['line {0: >4}: {1}'.format(no, line.replace('\n', '').replace(text, underline(text)))\
+        matches = ['{0} {1}'.format(\
+                bold('[{0: >3}]'.format(no)),\
+                line.replace('\n', '').replace(text, underline(text)))\
                 for no, line in enumerate(file)\
                 if text in line]
         return matches, matches
