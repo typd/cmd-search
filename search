@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+import os
+import re
+import string
+import subprocess
+
+import argparse
+
+def search_recursively(max_depth, root_dir, dir, dir_depth, path_regex, text):
+    if max_depth and dir_depth > max_depth:
+        return 0, 0
+    matched_files, matched_lines = 0, 0
+    for file in os.listdir(dir):
+        path = os.path.join(dir, file)
+        is_dir = os.path.isdir(path)
+        if is_dir:
+            files, lines = search_recursively(max_depth, root_dir, path, dir_depth + 1, path_regex, text)
+            matched_files += files
+            matched_lines += lines
+        elif re.match(path_regex, path):
+            prefix = os.path.commonprefix([root_dir, path])
+            relative_path = os.path.relpath(path, prefix)
+            try:
+                matched, matches = check_content(path, text)
+                if matched:
+                    matched_files += 1
+                    matched_lines += len(matches)
+                    print('  {}'.format(bold('./' + relative_path)))
+                    for match in matches:
+                        print('    {}'.format(match))
+                    if matches:
+                        print('    {} matches'.format(len(matches)))
+            except UnicodeDecodeError as ex:
+                print('  ERROR on openning {}'.format(path))
+    return matched_files, matched_lines
+
+def underline(str):
+    return '\033[4m{}\033[0m'.format(str)
+
+def bold(str):
+    return '\033[1m{}\033[0m'.format(str)
+
+def is_text_file(path):
+    # NOTE can be improved
+    bytes_message = subprocess.Popen(['file', path, '--mime'], stdout=subprocess.PIPE).communicate()[0]
+    message = bytes_message.decode(encoding='UTF-8')
+    return 'text' in message and not 'charset=binary' in message
+
+def check_content(path, text):
+    if text:
+        if not is_text_file(path):
+            return False, []
+    else:
+        return True, []
+    with open(path, 'r') as file:
+        matches = ['line {0: >4}: {1}'.format(no, line.replace('\n', '').replace(text, underline(text)))\
+                for no, line in enumerate(file)\
+                if text in line]
+        return matches, matches
+
+def convert_bash_regex_to_py_regex(regex, match_end):
+    template = '.*{}$' if match_end else '.*{}.*'
+    return template.format(regex.replace('.', '\\.').replace('*', '.*')) if regex else None
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', dest='dir', help='directory')
+    parser.add_argument('-L', dest='max_depth', type=int, help='max directory depth')
+    parser.add_argument('-p', dest='path_regex', help='path regex [bash regex]')
+    parser.add_argument('text', nargs='?', help='plain text to find in file content')
+    args = parser.parse_args()
+    dir = args.dir if args.dir else os.path.abspath('.')
+    path_regex = convert_bash_regex_to_py_regex(args.path_regex if args.path_regex else '*', True)
+    max_depth = args.max_depth
+    text = args.text
+    print('[dir  ]: {}'.format(dir))
+    if args.max_depth:
+        print('[depth]: {}'.format(max_depth))
+    if args.path_regex:
+        print('[path ]: "{}"'.format(args.path_regex))
+    if args.text:
+        print('[text ]: "{}"'.format(args.text))
+    print('----------------')
+    print('Search Results:')
+    files, lines = search_recursively(max_depth, dir, dir, 1, path_regex, text)
+    print('----------------')
+    print('Matched {} lines in {} files'.format(lines, files))
+    print('----------------')
+
+main()
