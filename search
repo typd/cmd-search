@@ -8,16 +8,19 @@ import argparse
 
 def search_recursively(max_depth, root_dir, dir, dir_depth, path_regex, text):
     if max_depth and dir_depth > max_depth:
-        return 0, 0
+        return 0, 0, 0
     matched_files, matched_lines = 0, 0
+    total_files = 0
     for file in os.listdir(dir):
         path = os.path.join(dir, file)
         is_dir = os.path.isdir(path)
         if is_dir:
-            files, lines = search_recursively(max_depth, root_dir, path, dir_depth + 1, path_regex, text)
+            files, lines, t_files = search_recursively(max_depth, root_dir, path, dir_depth + 1, path_regex, text)
             matched_files += files
             matched_lines += lines
+            total_files += t_files
         elif re.match(path_regex, path):
+            total_files += 1
             prefix = os.path.commonprefix([root_dir, path])
             relative_path = os.path.relpath(path, prefix)
             try:
@@ -35,7 +38,7 @@ def search_recursively(max_depth, root_dir, dir, dir_depth, path_regex, text):
                 #print('  ERROR on openning {}'.format(path))
                 #print('  {}'.format(ex))
                 pass
-    return matched_files, matched_lines
+    return matched_files, matched_lines, total_files
 
 def invert(str):
     return '\033[7m{}\033[0m'.format(str)
@@ -90,9 +93,9 @@ def main():
         print('[text ]: "{}"'.format(args.text))
     print('----------------')
     print('Search Results:')
-    files, lines = search_recursively(max_depth, dir, dir, 1, path_regex, text)
+    files, lines, total_files = search_recursively(max_depth, dir, dir, 1, path_regex, text)
     print('----------------')
-    print('Matched {} lines in {} files'.format(lines, files))
+    print('Matched {} lines in {} files, scanned {} files'.format(lines, files, total_files))
     print('----------------')
 
 main()
